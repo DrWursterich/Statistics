@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import javafx.scene.Group;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Line;
+import javafx.scene.shape.Circle;
+import javafx.scene.control.Tooltip;
 import javafx.concurrent.Task;
 import javafx.application.Platform;
 
@@ -16,13 +18,14 @@ import javafx.application.Platform;
  */
 @SuppressWarnings("restriction")
 public class LineGraph {
+	private static final double POINT_RADIUS = 2.5;
+	private static final double SCALE_STROKE = 2.5;
 	private static int graphCount = 0;
-	private Group scale;
-	private ArrayList<Group> graphs = new ArrayList<Group>();
-	private ArrayList<Paint> graphColors = new ArrayList<Paint>();
+	private Group scale = new Group();
+	private ArrayList<Graph> graphs = new ArrayList<Graph>();
 	private Line line;
-	private double x;
-	private double y;
+	private double xScale;
+	private double yScale;
 	private double width;
 	private double height;
 	private double xStart;
@@ -31,6 +34,86 @@ public class LineGraph {
 	private double yEnd;
 	private double xScaleFactor;
 	private double yScaleFactor;
+
+	protected final class Point {
+		private final double x;
+		private final double y;
+
+		protected Point(double x, double y) {
+			this.x = x;
+			this.y = y;
+		}
+
+		protected double getX() {
+			return this.x;
+		}
+
+		protected double getY() {
+			return this.y;
+		}
+
+		protected double getRelativeX() {
+			return xScale+(this.x-xStart)*xScaleFactor;
+		}
+
+		protected double getRelativeY() {
+			return yScale-(this.y-yStart)*yScaleFactor;
+		}
+	}
+
+	protected final class Graph {
+		private Paint color;
+		private ArrayList<Point> points = new ArrayList<Point>();
+		private Group group = new Group();
+
+		protected Graph(Paint color) {
+			this.color = color;
+			group.setManaged(false);
+		}
+
+		protected Paint getColor() {
+			return this.color;
+		}
+
+		protected void addPoint(Point point) throws Exception {
+			this.points.add(point);
+			this.updateGroup();
+		}
+
+		protected Group getGroup() {
+			return this.group;
+		}
+
+		private void updateGroup() throws Exception {
+			Task<Void> task = new Task<Void>() {
+				@Override protected Void call() throws Exception {
+					Platform.runLater(new Runnable() {
+						@Override
+						public void run() {
+							if (points.size() != 0) {
+								Circle circle = new Circle(points.get(0).getRelativeX(),
+										points.get(0).getRelativeY(), POINT_RADIUS, color);
+								Tooltip.install(circle, new Tooltip(points.get(0).getX() + " | " + points.get(0).getY()));
+								group.getChildren().add(circle);
+								for (int i=1;i<points.size();i++) {
+									circle = new Circle(points.get(i).getRelativeX(),
+											points.get(i).getRelativeY(), POINT_RADIUS, color);
+									Tooltip.install(circle, new Tooltip(points.get(i).getX() + " | " + points.get(i).getY()));
+									group.getChildren().add(circle);
+									line = new Line(points.get(i-1).getRelativeX(), points.get(i-1).getRelativeY(),
+													points.get(i).getRelativeX(), points.get(i).getRelativeY());
+									line.setStroke(color);
+									group.getChildren().add(line);
+								}
+							}
+						}
+					});
+					return null;
+				}
+			};
+			task.run();
+		}
+	}
 
 	/**
 	 * Creates a line graph scale at x, y with the given width and height.
@@ -47,8 +130,8 @@ public class LineGraph {
 	 */
 	public LineGraph(double x, double y, double width, double height,
 			double xStart, double xEnd, double yStart, double yEnd) {
-		this.x = x;
-		this.y = y;
+		this.xScale = x;
+		this.yScale = y;
 		this.width = width;
 		this.height = height;
 		this.xStart = xStart;
@@ -57,13 +140,12 @@ public class LineGraph {
 		this.yEnd = yEnd;
 		this.xScaleFactor = this.width/(this.xEnd-this.xStart);
 		this.yScaleFactor = this.height/(this.yEnd-this.yStart);
-		this.scale = new Group();
 		this.scale.setManaged(false);
-		this.line = new Line(this.x, this.y, this.x, this.y-this.height);
-		this.line.setStrokeWidth(2.5);
+		this.line = new Line(this.xScale, this.yScale, this.xScale, this.yScale-this.height);
+		this.line.setStrokeWidth(SCALE_STROKE);
 		this.scale.getChildren().add(line);
-		this.line = new Line(this.x, this.y, this.x+this.width, this.y);
-		this.line.setStrokeWidth(2.5);
+		this.line = new Line(this.xScale, this.yScale, this.xScale+this.width, this.yScale);
+		this.line.setStrokeWidth(SCALE_STROKE);
 		this.scale.getChildren().add(line);
 	}
 
@@ -77,36 +159,14 @@ public class LineGraph {
 	 * @throws Exception
 	 */
 	public int addGraph(double[][] coordinates, Paint color) throws Exception {
-		Task<Void> task = new Task<Void>() {
-			@Override protected Void call() throws Exception {
-				Group graph = new Group();
-				graph.setManaged(false);
-				if (coordinates.length == 1) {
-					if (coordinates[0].length != 2) {
-						throw new IllegalArgumentException("Coordinates have to consist of two values");
-					}
-					graph.getChildren().add(new Line((coordinates[0][0]-xStart)*xScaleFactor,
-						(coordinates[0][1]-yStart)*yScaleFactor,
-						(coordinates[0][0]-xStart)*xScaleFactor,
-						(coordinates[0][1]-yStart)*yScaleFactor));
-				}
-				for (int i=1;i<coordinates.length;i++) {
-					if (coordinates[i].length != 2) {
-						throw new IllegalArgumentException("Coordinates have to consist of two values");
-					}
-					line = new Line(x+(coordinates[i-1][0]-xStart)*xScaleFactor,
-							y-(coordinates[i-1][1]-yStart)*yScaleFactor,
-							x+(coordinates[i][0]-xStart)*xScaleFactor,
-							y-(coordinates[i][1]-yStart)*yScaleFactor);
-					line.setStroke(color);
-					graph.getChildren().add(line);
-				}
-				graphs.add(graph);
-				graphColors.add(color);
-				return null;
+		Graph graph = new Graph(color);
+		for (int i=0;i<coordinates.length;i++) {
+			if (coordinates[i].length != 2) {
+				throw new IllegalArgumentException("Coordinates have to consist of two values");
 			}
-		};
-		task.run();
+			graph.addPoint(new Point(coordinates[0][0], coordinates[0][1]));
+		}
+		graphs.add(graph);
 		return LineGraph.graphCount++;
 	}
 
@@ -130,37 +190,10 @@ public class LineGraph {
 	 * @throws Exception
 	 */
 	public void extendGraph(int graph, double[] coordinates) throws Exception {
-		Task<Void> task = new Task<Void>() {
-			@Override protected Void call() throws Exception {
-				Platform.runLater(new Runnable() {
-					@Override
-					public void run() {
-						if (graphs.get(graph).getChildren().size() == 0) {
-							line = new Line(
-									x+xScaleFactor*(coordinates[0]-xStart),
-									y-yScaleFactor*(coordinates[1]-yStart),
-									x+xScaleFactor*(coordinates[0]-xStart),
-									y-yScaleFactor*(coordinates[1]-yStart));
-							line.setStroke(graphColors.get(graph));
-							graphs.get(graph).getChildren().add(line);
-						}
-						line = (Line)(graphs.get(graph).getChildren().get(graphs.get(graph).getChildren().size()-1));
-						line = new Line(line.getEndX(), line.getEndY(),
-								x+xScaleFactor*(coordinates[0]-xStart),
-								y-yScaleFactor*(coordinates[1]-yStart));
-						line.setStroke(graphColors.get(graph));
-						Platform.runLater(new Runnable() {
-							@Override
-							public void run() {
-								graphs.get(graph).getChildren().add(line);
-							}
-						});
-					}
-				});
-				return null;
-			}
-		};
-		task.run();
+		if (coordinates.length != 2) {
+			throw new IllegalArgumentException("Coordinates have to consist of two values");
+		}
+		graphs.get(graph).addPoint(new Point(coordinates[0], coordinates[1]));
 	}
 
 	/**
@@ -184,7 +217,7 @@ public class LineGraph {
 	 * @throws IndexOutOfBoundsException if the graph index does not exist
 	 */
 	public Group getGraphGroup(int graph) throws IndexOutOfBoundsException {
-		return this.graphs.get(graph);
+		return this.graphs.get(graph).getGroup();
 	}
 
 	/**
@@ -198,8 +231,8 @@ public class LineGraph {
 		Group group = new Group();
 		group.setManaged(false);
 		group.getChildren().add(this.scale);
-		for (Group g : this.graphs) {
-			group.getChildren().add(g);
+		for (Graph g : this.graphs) {
+			group.getChildren().add(g.getGroup());
 		}
 		return group;
 	}
