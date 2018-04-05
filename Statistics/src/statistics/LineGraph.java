@@ -20,14 +20,15 @@ import javafx.application.Platform;
  */
 @SuppressWarnings("restriction")
 public class LineGraph {
-	private static final double POINT_RADIUS = 2.5;
-	private static final double SCALE_STROKE = 2.5;
-	private int graphCount = 0;
 	private Group scaleGroup = new Group();
 	private Group markingGroup = new Group();
 	private Group completeGroup = new Group();
 	private ArrayList<Graph> graphs = new ArrayList<Graph>();
 	private Marking marking = null;
+	private int graphCount = 0;
+	private double scaleStrokeWidth = 2.5;
+	private double graphStrokeWidth = 1;
+	private double graphPointRadius = 2.5;
 	private double xScale;
 	private double yScale;
 	private double width;
@@ -40,6 +41,18 @@ public class LineGraph {
 	private double yScaleFactor;
 	private double markingSizeX = 0;
 	private double markingSizeY = 0;
+
+	private Task<Void> updateGroupsLater = new Task<Void>() {
+		@Override protected Void call() throws Exception {
+			Platform.runLater(new Runnable() {
+				@Override
+				public void run() {
+					updateGroups();
+				}
+			});
+			return null;
+		}
+	};
 
 	protected final class Point {
 		private final double x;
@@ -98,17 +111,18 @@ public class LineGraph {
 						public void run() {
 							if (points.size() != 0) {
 								Circle circle = new Circle(points.get(0).getRelativeX(),
-										points.get(0).getRelativeY(), POINT_RADIUS, color);
+										points.get(0).getRelativeY(), graphPointRadius, color);
 								Tooltip.install(circle, new Tooltip(points.get(0).getX() + " | " + points.get(0).getY()));
 								group.getChildren().add(circle);
 								for (int i=1;i<points.size();i++) {
 									circle = new Circle(points.get(i).getRelativeX(),
-											points.get(i).getRelativeY(), POINT_RADIUS, color);
+											points.get(i).getRelativeY(), graphPointRadius, color);
 									Tooltip.install(circle, new Tooltip(points.get(i).getX() + " | " + points.get(i).getY()));
 									group.getChildren().add(circle);
 									Line line = new Line(points.get(i-1).getRelativeX(), points.get(i-1).getRelativeY(),
 													points.get(i).getRelativeX(), points.get(i).getRelativeY());
 									line.setStroke(color);
+									line.setStrokeWidth(graphStrokeWidth);
 									group.getChildren().add(line);
 								}
 							}
@@ -247,7 +261,7 @@ public class LineGraph {
 	public LineGraph(double x, double y, double width, double height,
 			double xStart, double xEnd, double yStart, double yEnd, Marking marking) {
 		this(x, y, width, height, xStart, xEnd, yStart, yEnd);
-		this.addMarking(marking);
+		this.setMarking(marking);
 	}
 
 	/**
@@ -304,12 +318,20 @@ public class LineGraph {
 	}
 
 	/**
-	 * Adds a {@link Marking Marking} to the scale.
-	 * @param marking the marking to add
+	 * Sets the {@link Marking Marking} for the scale.<br/>
+	 * <b>null</b> can be used to unset the marking.
+	 * @param marking the marking to set
 	 */
-	public void addMarking(Marking marking) {
+	public void setMarking(Marking marking) {
 		this.marking = marking;
-		this.updateGroupsLater();
+		this.updateGroups();
+	}
+
+	/**
+	 * Removes the marking.
+	 */
+	public void removeMarking() {
+		this.setMarking(null);
 	}
 
 	/**
@@ -329,12 +351,39 @@ public class LineGraph {
 	}
 
 	/**
+	 * Returns the stroke width of all scale elements.<br/>
+	 * Default value: <b>2.5</b>
+	 * @return the stroke width of all scale elements.
+	 */
+	public double getScaleStrokeWidth() {
+		return this.scaleStrokeWidth;
+	}
+
+	/**
+	 * Returns the stroke width of all graphs.<br/>
+	 * Default value: <b>1</b>
+	 * @return the stroke width of graphs
+	 */
+	public double getGraphStrokeWidth() {
+		return this.graphStrokeWidth;
+	}
+
+	/**
+	 * Returns the radius of points in graphs.<br/>
+	 * Default value: <b>2.5</b>
+	 * @return the radius of points in graphs.
+	 */
+	public double getGraphPointRadius() {
+		return this.graphPointRadius;
+	}
+
+	/**
 	 * Moves the graph to a new X-coordinate.
 	 * @param x the new X-coordinate of the origin
 	 */
 	public void setX(double x) {
 		this.xScale = x;
-		this.updateGroupsLater();
+		this.updateGroups();
 	}
 
 	/**
@@ -343,7 +392,7 @@ public class LineGraph {
 	 */
 	public void setY(double y) {
 		this.yScale = y;
-		this.updateGroupsLater();
+		this.updateGroups();
 	}
 
 	/**
@@ -354,7 +403,35 @@ public class LineGraph {
 	public void relocate(double x, double y) {
 		this.xScale = x;
 		this.yScale = y;
-		this.updateGroupsLater();
+		this.updateGroups();
+	}
+
+	/**
+	 * Changes the stroke width of all scale elements.
+	 * @param scaleStrokeWidth the new stroke width
+	 */
+	public void setScaleStrokeWidth(double scaleStrokeWidth) {
+		this.scaleStrokeWidth = scaleStrokeWidth;
+		this.updateGroups();
+	}
+
+	/**
+	 * Changes the stroke width of all graphs.
+	 * @param graphStrokeWidth the new stroke width
+	 */
+	public void setGraphStrokeWidth(double graphStrokeWidth) {
+		this.graphStrokeWidth = graphStrokeWidth;
+		this.updateGroups();
+	}
+
+	/**
+	 * Changes the radius of points in all graphs.<br/>
+	 * A radius of <b>0</b> removes them entirely.
+	 * @param graphPointRadius
+	 */
+	public void setGraphPointradius(double graphPointRadius) {
+		this.graphPointRadius = graphPointRadius;
+		this.updateGroups();
 	}
 
 	/**
@@ -397,6 +474,9 @@ public class LineGraph {
 	 * @return width of markings on the Y-axis
 	 */
 	public double getMarkingSizeX() {
+		if (this.marking != null) {
+			this.updateGroups();
+		}
 		return this.markingSizeX;
 	}
 
@@ -405,6 +485,9 @@ public class LineGraph {
 	 * @return heigth of markings on the X-axis
 	 */
 	public double getMarkingSizeY() {
+		if (this.marking != null) {
+			this.updateGroups();
+		}
 		return this.markingSizeY;
 	}
 
@@ -435,19 +518,19 @@ public class LineGraph {
 	 * If a parameter changes, e.g. by moving the graph, the groups have to be
 	 * build acording to these changes.<br/>
 	 * This method allows for this to happen in a different Threads.
+	 *
+	 * TODO differentiate wether this has to be used or not.
+	 * fx threads should not be able to run the tast synchronously, but somehow are.
 	 */
+	@SuppressWarnings("unused")
 	private void updateGroupsLater() {
-		(new Task<Void>() {
-			@Override protected Void call() throws Exception {
-				Platform.runLater(new Runnable() {
-					@Override
-					public void run() {
-						updateGroups();
-					}
-				});
-				return null;
-			}
-		}).run();
+		boolean canRun = true;
+		if (updateGroupsLater.isRunning()) {
+			canRun = updateGroupsLater.cancel();
+		}
+		if (canRun) {
+			updateGroupsLater.run();
+		}
 	}
 
 	/**
@@ -459,14 +542,14 @@ public class LineGraph {
 		scaleGroup.getChildren().clear();
 		completeGroup.getChildren().clear();
 		markingGroup.getChildren().clear();
-		addLine(xScale, yScale, xScale, yScale-height, SCALE_STROKE, scaleGroup);
-		addLine(xScale, yScale, xScale+width, yScale, SCALE_STROKE, scaleGroup);
+		addLine(xScale, yScale, xScale, yScale-height, scaleStrokeWidth, scaleGroup);
+		addLine(xScale, yScale, xScale+width, yScale, scaleStrokeWidth, scaleGroup);
 		if (marking != null) {
 			int xMarkings = marking.getAmountX()-1;
 			int yMarkings = marking.getAmountY()-1;
 			for (int i=0;i<=xMarkings;i++) {
 				double markingX = xScale+(xEnd-xStart)*xScaleFactor/xMarkings*i;
-				addLine(markingX, yScale, markingX, yScale+marking.getMarkingLength(), SCALE_STROKE, markingGroup);
+				addLine(markingX, yScale, markingX, yScale+marking.getMarkingLength(), scaleStrokeWidth, markingGroup);
 				Text t = new Text(markingX, yScale+1.5*marking.getMarkingLength(),
 						String.format("% " + marking.getDigitsX() + "." + marking.getCommaDigitsX() + "f",
 								xStart+(double)i/(double)xMarkings*(xEnd-xStart)));
@@ -477,7 +560,7 @@ public class LineGraph {
 			}
 			for (int i=0;i<=yMarkings;i++) {
 				double markingY = yScale-(yEnd-yStart)*yScaleFactor/yMarkings*i;
-				addLine(xScale, markingY, xScale-marking.getMarkingLength(), markingY, SCALE_STROKE, markingGroup);
+				addLine(xScale, markingY, xScale-marking.getMarkingLength(), markingY, scaleStrokeWidth, markingGroup);
 				Text t = new Text(xScale-1.5*marking.getMarkingLength(), markingY,
 						String.format("% " + marking.getDigitsY() + "." + marking.getCommaDigitsY() + "f",
 								yStart+(double)i/(double)yMarkings*(yEnd-yStart)));
@@ -508,7 +591,7 @@ public class LineGraph {
 	 */
 	private void addLine(double startX, double startY, double endX, double endY, double strokeWidth, Group group) {
 		Line line = new Line(startX, startY, endX, endY);
-		line.setStrokeWidth(SCALE_STROKE);
+		line.setStrokeWidth(scaleStrokeWidth);
 		group.getChildren().add(line);
 	}
 }
