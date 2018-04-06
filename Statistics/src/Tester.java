@@ -17,13 +17,15 @@ public class Tester extends Application {
 	public static void main(String...args) {
 		graph.setMarking(LineGraph.marking(6, 11, 2, 0, 2, 0, 6,
 				Font.font("verdana", FontWeight.LIGHT, FontPosture.REGULAR, 10)));
+		graph.addGraph(new double[][] {{0, 0}, {1, 1}, {2, 4}}, Color.RED);
 		try {
-			graph.addGraph(new double[][] {{0, 0}, {1, 1}, {2, 4}}, Color.RED);
-			layout.getChildren().add(graph.getCompleteGroup());
 			Thread t = new Thread() {
 				@Override
 				public void run() {
 					for (int i=0;i<25;i++) {
+						if (i%2==1) {
+							graph.setYScale(graph.getYStart(), graph.getYEnd()-1);
+						}
 						try {
 							sleep(600);
 						} catch (InterruptedException e) {
@@ -55,6 +57,7 @@ public class Tester extends Application {
 
 	@Override
 	public void start(Stage primaryStage) throws Exception {
+		layout.getChildren().add(graph.getCompleteGroup());
 		primaryStage.setScene(new Scene(layout));
 		primaryStage.show();
 	}

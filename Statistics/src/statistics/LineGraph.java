@@ -39,20 +39,6 @@ public class LineGraph {
 	private double yEnd;
 	private double xScaleFactor;
 	private double yScaleFactor;
-	private double markingSizeX = 0;
-	private double markingSizeY = 0;
-
-	private Task<Void> updateGroupsLater = new Task<Void>() {
-		@Override protected Void call() throws Exception {
-			Platform.runLater(new Runnable() {
-				@Override
-				public void run() {
-					updateGroups();
-				}
-			});
-			return null;
-		}
-	};
 
 	protected final class Point {
 		private final double x;
@@ -130,7 +116,7 @@ public class LineGraph {
 				}
 			}
 
-			// The Line might be completely out of sight
+			// The Line might be out of sight
 			if ((!this.isInGraph() || !other.isInGraph()) && (startIntersection==this && endIntersection==other)) {
 				return null;
 			}
@@ -164,7 +150,7 @@ public class LineGraph {
 			return this.color;
 		}
 
-		protected void addPoint(Point point) throws Exception {
+		protected void addPoint(Point point) {
 			this.points.add(point);
 			this.updateGroup();
 		}
@@ -173,7 +159,7 @@ public class LineGraph {
 			return this.group;
 		}
 
-		protected void updateGroup() throws Exception {
+		protected void updateGroup() {
 			Task<Void> task = new Task<Void>() {
 				@Override protected Void call() throws Exception {
 					Platform.runLater(new Runnable() {
@@ -291,6 +277,20 @@ public class LineGraph {
 		public Font getFont() {
 			return font;
 		}
+
+		public double getSizeX(LineGraph graph) {
+			Text t = new Text(String.format("% " + this.digitsX + "." + this.commaDigitsX + "f",
+					Math.pow(10, this.digitsX-1)));
+			t.setFont(this.font);
+			return t.getLayoutBounds().getHeight()+1.5*this.markingLength;
+		}
+
+		public double getSizeY(LineGraph graph) {
+			Text t = new Text(String.format("% " + this.digitsY + "." + this.commaDigitsY + "f",
+					Math.pow(10, this.digitsX-1)));
+			t.setFont(this.font);
+			return t.getLayoutBounds().getWidth()+1.5*this.markingLength;
+		}
 	}
 
 	/**
@@ -303,8 +303,8 @@ public class LineGraph {
 	 * @param height Height of the graph
 	 * @param xStart Min X-value
 	 * @param xEnd Max X-value
-	 * @param yStart Max Y-value
-	 * @param yEnd Min Y-value
+	 * @param yStart Min Y-value
+	 * @param yEnd Max Y-value
 	 */
 	public LineGraph(double x, double y, double width, double height,
 			double xStart, double xEnd, double yStart, double yEnd) {
@@ -335,8 +335,8 @@ public class LineGraph {
 	 * @param height Height of the graph
 	 * @param xStart Min X-value
 	 * @param xEnd Max X-value
-	 * @param yStart Max Y-value
-	 * @param yEnd Min Y-value
+	 * @param yStart Min Y-value
+	 * @param yEnd Max Y-value
 	 * @param marking a marking object to use
 	 */
 	public LineGraph(double x, double y, double width, double height,
@@ -359,7 +359,7 @@ public class LineGraph {
 	 * @return index of the graph
 	 * @throws Exception
 	 */
-	public int addGraph(double[][] coordinates, Paint color) throws Exception {
+	public int addGraph(double[][] coordinates, Paint color) {
 		Graph graph = new Graph(color);
 		for (int i=0;i<coordinates.length;i++) {
 			if (coordinates[i].length != 2) {
@@ -379,7 +379,7 @@ public class LineGraph {
 	 * @return index of the graph
 	 * @throws Exception
 	 */
-	public int addGraph(Paint color) throws Exception {
+	public int addGraph(Paint color) {
 		return this.addGraph(new double[][] {}, color);
 	}
 
@@ -391,7 +391,7 @@ public class LineGraph {
 	 * @param coordinates the coordinates of the point to add
 	 * @throws Exception
 	 */
-	public void extendGraph(int graph, double...coordinates) throws Exception {
+	public void extendGraph(int graph, double...coordinates) {
 		if (coordinates.length != 2) {
 			throw new IllegalArgumentException("Coordinates have to consist of two values");
 		}
@@ -417,7 +417,7 @@ public class LineGraph {
 
 	/**
 	 * Returns the X-coordinate of the origin.
-	 * @return the X-coordinate of the origin.
+	 * @return the X-coordinate of the origin
 	 */
 	public double getX() {
 		return this.xScale;
@@ -425,16 +425,48 @@ public class LineGraph {
 
 	/**
 	 * Returns the Y-coordinate of the origin.
-	 * @return the Y-coordinate of the origin.
+	 * @return the Y-coordinate of the origin
 	 */
 	public double getY() {
 		return this.yScale;
 	}
 
 	/**
+	 * Returns the min value of the scale on the X-axis.
+	 * @return the min value of the scale on the X-axis
+	 */
+	public double getXStart() {
+		return this.xStart;
+	}
+
+	/**
+	 * Returns the max value of the scale on the X-axis.
+	 * @return the max value of the scale on the X-axis
+	 */
+	public double getXEnd() {
+		return this.xEnd;
+	}
+
+	/**
+	 * Returns the min value of the scale on the Y-axis.
+	 * @return the min value of the scale on the Y-axis
+	 */
+	public double getYStart() {
+		return this.yStart;
+	}
+
+	/**
+	 * Returns the max value of the scale on the Y-axis.
+	 * @return the max value of the scale on the Y-axis
+	 */
+	public double getYEnd() {
+		return this.yEnd;
+	}
+
+	/**
 	 * Returns the stroke width of all scale elements.<br/>
 	 * Default value: <b>2.5</b>
-	 * @return the stroke width of all scale elements.
+	 * @return the stroke width of all scale elements
 	 */
 	public double getScaleStrokeWidth() {
 		return this.scaleStrokeWidth;
@@ -452,7 +484,7 @@ public class LineGraph {
 	/**
 	 * Returns the radius of points in graphs.<br/>
 	 * Default value: <b>2.5</b>
-	 * @return the radius of points in graphs.
+	 * @return the radius of points in graphs
 	 */
 	public double getGraphPointRadius() {
 		return this.graphPointRadius;
@@ -484,6 +516,72 @@ public class LineGraph {
 	public void relocate(double x, double y) {
 		this.xScale = x;
 		this.yScale = y;
+		this.updateGroups();
+	}
+
+	/**
+	 * Changes the min value on the scale of the X-axis.
+	 * @param xStart Min X-value
+	 */
+	public void setXStart(double xStart) {
+		this.xStart = xStart;
+		this.xScaleFactor = this.width/(this.xEnd-this.xStart);
+		this.updateGroups();
+	}
+
+	/**
+	 * Changes the max value on the scale of the X-axis.
+	 * @param xEnd Max X-value
+	 */
+	public void setXEnd(double xEnd) {
+		this.xEnd = xEnd;
+		this.xScaleFactor = this.width/(this.xEnd-this.xStart);
+		this.updateGroups();
+	}
+
+	/**
+	 * Changes the min value on the scale of the Y-axis.
+	 * @param yStart Min Y-value
+	 */
+	public void setYStart(double yStart) {
+		this.yStart = yStart;
+		this.yScaleFactor = this.height/(this.yEnd-this.yStart);
+		this.updateGroups();
+	}
+
+	/**
+	 * Changes the max value on the scale of the Y-axis.
+	 * @param yEnd Max Y-value
+	 */
+	public void setYEnd(double yEnd) {
+		this.yEnd = yEnd;
+		this.yScaleFactor = this.height/(this.yEnd-this.yStart);
+		this.updateGroups();
+	}
+
+	/**
+	 * Changes the scale of the X-axis.
+	 * @param xStart Min Y-value
+	 * @param xEnd Max Y-value
+	 */
+	public void setXScale(double xStart, double xEnd) {
+		this.xStart = xStart;
+		this.xEnd = xEnd;
+		this.xScaleFactor = this.width/(this.xEnd-this.xStart);
+		this.yScaleFactor = this.height/(this.yEnd-this.yStart);
+		this.updateGroups();
+	}
+
+	/**
+	 * Changes the scale of the Y-axis.
+	 * @param yStart Min Y-value
+	 * @param yEnd Max Y-value
+	 */
+	public void setYScale(double yStart, double yEnd) {
+		this.yStart = yStart;
+		this.yEnd = yEnd;
+		this.xScaleFactor = this.width/(this.xEnd-this.xStart);
+		this.yScaleFactor = this.height/(this.yEnd-this.yStart);
 		this.updateGroups();
 	}
 
@@ -555,10 +653,7 @@ public class LineGraph {
 	 * @return width of markings on the Y-axis
 	 */
 	public double getMarkingSizeX() {
-		if (this.marking != null) {
-			this.updateGroups();
-		}
-		return this.markingSizeX;
+		return this.marking.getSizeX(this);
 	}
 
 	/**
@@ -566,10 +661,7 @@ public class LineGraph {
 	 * @return heigth of markings on the X-axis
 	 */
 	public double getMarkingSizeY() {
-		if (this.marking != null) {
-			this.updateGroups();
-		}
-		return this.markingSizeY;
+		return this.marking.getSizeY(this);
 	}
 
 	/**
@@ -595,70 +687,53 @@ public class LineGraph {
 	}
 
 	/**
-	 * Reconstructs all groups asynchronously.<br/>
-	 * If a parameter changes, e.g. by moving the graph, the groups have to be
-	 * build acording to these changes.<br/>
-	 * This method allows for this to happen in a different Threads.
-	 *
-	 * TODO differentiate wether this has to be used or not.
-	 * fx threads should not be able to run the tast synchronously, but somehow are.
-	 */
-	@SuppressWarnings("unused")
-	private void updateGroupsLater() {
-		boolean canRun = true;
-		if (updateGroupsLater.isRunning()) {
-			canRun = updateGroupsLater.cancel();
-		}
-		if (canRun) {
-			updateGroupsLater.run();
-		}
-	}
-
-	/**
 	 * Reconstructs all groups.<br/>
 	 * If a parameter changes, e.g. by moving the graph, the groups have to be
 	 * build acording to these changes.
 	 */
 	private void updateGroups() {
-		scaleGroup.getChildren().clear();
-		completeGroup.getChildren().clear();
-		markingGroup.getChildren().clear();
-		addLine(xScale, yScale, xScale, yScale-height, scaleStrokeWidth, scaleGroup);
-		addLine(xScale, yScale, xScale+width, yScale, scaleStrokeWidth, scaleGroup);
-		if (marking != null) {
-			int xMarkings = marking.getAmountX()-1;
-			int yMarkings = marking.getAmountY()-1;
-			for (int i=0;i<=xMarkings;i++) {
-				double markingX = xScale+(xEnd-xStart)*xScaleFactor/xMarkings*i;
-				addLine(markingX, yScale, markingX, yScale+marking.getMarkingLength(), scaleStrokeWidth, markingGroup);
-				Text t = new Text(markingX, yScale+1.5*marking.getMarkingLength(),
-						String.format("% " + marking.getDigitsX() + "." + marking.getCommaDigitsX() + "f",
-								xStart+(double)i/(double)xMarkings*(xEnd-xStart)));
-				t.setFont(marking.getFont());
-				t.relocate(t.getX()-t.getLayoutBounds().getWidth()/2, t.getY());
-				markingGroup.getChildren().add(t);
-				markingSizeY = t.getLayoutBounds().getHeight()+1.5*marking.getMarkingLength();
+		Platform.runLater(new Runnable() {
+			@Override
+			public void run() {
+				scaleGroup.getChildren().clear();
+				completeGroup.getChildren().clear();
+				markingGroup.getChildren().clear();
+				addLine(xScale, yScale, xScale, yScale-height, scaleStrokeWidth, scaleGroup);
+				addLine(xScale, yScale, xScale+width, yScale, scaleStrokeWidth, scaleGroup);
+				if (marking != null) {
+					int xMarkings = marking.getAmountX()-1;
+					int yMarkings = marking.getAmountY()-1;
+					for (int i=0;i<=xMarkings;i++) {
+						double markingX = xScale+(xEnd-xStart)*xScaleFactor/xMarkings*i;
+						addLine(markingX, yScale, markingX, yScale+marking.getMarkingLength(), scaleStrokeWidth, markingGroup);
+						Text t = new Text(markingX, yScale+1.5*marking.getMarkingLength(),
+								String.format("% " + marking.getDigitsX() + "." + marking.getCommaDigitsX() + "f",
+										xStart+(double)i/(double)xMarkings*(xEnd-xStart)));
+						t.setFont(marking.getFont());
+						t.relocate(t.getX()-t.getLayoutBounds().getWidth()/2, t.getY());
+						markingGroup.getChildren().add(t);
+					}
+					for (int i=0;i<=yMarkings;i++) {
+						double markingY = yScale-(yEnd-yStart)*yScaleFactor/yMarkings*i;
+						addLine(xScale, markingY, xScale-marking.getMarkingLength(), markingY, scaleStrokeWidth, markingGroup);
+						Text t = new Text(xScale-1.5*marking.getMarkingLength(), markingY,
+								String.format("% " + marking.getDigitsY() + "." + marking.getCommaDigitsY() + "f",
+										yStart+(double)i/(double)yMarkings*(yEnd-yStart)));
+						t.setFont(marking.getFont());
+						t.relocate(t.getX()-t.getLayoutBounds().getWidth(), t.getY()-t.getLayoutBounds().getHeight()/2);
+						markingGroup.getChildren().add(t);
+					}
+				}
+				scaleGroup.getChildren().add(markingGroup);
+				completeGroup.getChildren().add(scaleGroup);
+				for (Graph g : graphs) {
+					try {
+						g.updateGroup();
+					} catch (Exception e) {}
+					completeGroup.getChildren().add(g.getGroup());
+				}
 			}
-			for (int i=0;i<=yMarkings;i++) {
-				double markingY = yScale-(yEnd-yStart)*yScaleFactor/yMarkings*i;
-				addLine(xScale, markingY, xScale-marking.getMarkingLength(), markingY, scaleStrokeWidth, markingGroup);
-				Text t = new Text(xScale-1.5*marking.getMarkingLength(), markingY,
-						String.format("% " + marking.getDigitsY() + "." + marking.getCommaDigitsY() + "f",
-								yStart+(double)i/(double)yMarkings*(yEnd-yStart)));
-				t.setFont(marking.getFont());
-				t.relocate(t.getX()-t.getLayoutBounds().getWidth(), t.getY()-t.getLayoutBounds().getHeight()/2);
-				markingGroup.getChildren().add(t);
-				markingSizeX = t.getLayoutBounds().getWidth()+1.5*marking.getMarkingLength();
-			}
-		}
-		scaleGroup.getChildren().add(markingGroup);
-		completeGroup.getChildren().add(scaleGroup);
-		for (Graph g : graphs) {
-			try {
-				g.updateGroup();
-			} catch (Exception e) {}
-			completeGroup.getChildren().add(g.getGroup());
-		}
+		});
 	}
 
 	/**
