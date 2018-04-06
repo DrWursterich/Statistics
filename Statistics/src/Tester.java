@@ -5,10 +5,9 @@ import javafx.stage.*;
 import javafx.scene.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-//import javafx.scene.control.*;
-//import javafx.scene.paint.*;
-//import javafx.scene.shape.*;
-//import javafx.event.*;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontPosture;
+import javafx.scene.text.FontWeight;
 
 @SuppressWarnings("restriction")
 public class Tester extends Application {
@@ -16,20 +15,22 @@ public class Tester extends Application {
 	private static LineGraph graph = new LineGraph(50, 350, 600, 300, 0, 25, 0, 40);
 
 	public static void main(String...args) {
+		graph.setMarking(LineGraph.marking(6, 11, 2, 0, 2, 0, 6,
+				Font.font("verdana", FontWeight.LIGHT, FontPosture.REGULAR, 10)));
 		try {
 			graph.addGraph(new double[][] {{0, 0}, {1, 1}, {2, 4}}, Color.RED);
 			layout.getChildren().add(graph.getCompleteGroup());
 			Thread t = new Thread() {
 				@Override
 				public void run() {
-					for (int i=0;i<30;i++) {
+					for (int i=0;i<25;i++) {
 						try {
 							sleep(600);
 						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}
 						try {
-							graph.extendGraph(0, new double[] {3+i, 8+i});
+							graph.extendGraph(0, (i+3)<24?(3+i):26, i==5?50:8+i);
 						} catch (Exception e) {
 							e.printStackTrace();
 						}

@@ -78,6 +78,76 @@ public class LineGraph {
 		protected double getRelativeY() {
 			return yScale-(this.y-yStart)*yScaleFactor;
 		}
+
+		protected boolean isInGraph() {
+			return this.x >= xStart && this.x <= xEnd && this.y >= yStart && this.y <=yEnd;
+		}
+
+		private double getDistance(Point other) {
+			return Math.sqrt(Math.pow(this.x-other.x, 2) + Math.pow(this.y-other.y, 2));
+		}
+
+		private Point getLineIntersection(double x1, double x2, double x3,
+				double x4, double y1, double y2, double y3, double y4) {
+			double zx = (x1*y2-y1*x2)*(x3-x4)-(x1-x2)*(x3*y4-y3*x4);
+			double zy = (x1*y2-y1*x2)*(y3-y4)-(y1-y2)*(x3*y4-y3*x4);
+			double n = (x1-x2)*(y3-y4)-(y1-y2)*(x3-x4);
+			if (n!=0) {
+				double x = zx/n;
+				double y = zy/n;
+				// Intersection might be outside of the start and end-points
+				if (!((x-x1)/(x2-x1) > 1 || (x-x3)/(x4-x3) > 1 || (y-y1)/(y2-y1) > 1 || (y-y3)/(y4-y3) > 1)) {
+					return new Point(x, y);
+				}
+			}
+			return null;
+		}
+
+		protected Line getLineTo(Point other, Paint color) {
+			Point startIntersection = this;
+			Point endIntersection = other;
+			Point[] intersections = new Point[4];
+
+			if (!this.isInGraph() || !other.isInGraph()) {
+				intersections[0] = this.getLineIntersection(this.x, other.x, xStart, xEnd,   this.y, other.y, yEnd,   yEnd);
+				intersections[1] = this.getLineIntersection(this.x, other.x, xStart, xEnd,   this.y, other.y, yStart, yStart);
+				intersections[2] = this.getLineIntersection(this.x, other.x, xStart, xStart, this.y, other.y, yStart, yEnd);
+				intersections[3] = this.getLineIntersection(this.x, other.x, xEnd,   xEnd,   this.y, other.y, yStart, yEnd);
+			}
+
+			for (int i=intersections.length-1;i>=0;i--) {
+				if (intersections[i] != null) {
+					if (!this.isInGraph()) {
+						startIntersection = startIntersection==this ? intersections[i] :
+							(this.getDistance(intersections[i]) < this.getDistance(startIntersection) ?
+									intersections[i] : startIntersection);
+					}
+					if (!other.isInGraph()) {
+						endIntersection = endIntersection==other ? intersections[i] :
+							(other.getDistance(intersections[i]) < other.getDistance(endIntersection) ?
+									intersections[i] : endIntersection);
+					}
+				}
+			}
+
+			// The Line might be completely out of sight
+			if ((!this.isInGraph() || !other.isInGraph()) && (startIntersection==this && endIntersection==other)) {
+				return null;
+			}
+
+			Line line = new Line(startIntersection.getRelativeX(), startIntersection.getRelativeY(),
+					endIntersection.getRelativeX(), endIntersection.getRelativeY());
+			line.setStroke(color);
+			line.setStrokeWidth(graphStrokeWidth);
+
+			return line;
+		}
+
+		protected Circle getCircle(Paint color) {
+			Circle circle = new Circle(this.getRelativeX(), this.getRelativeY(), graphPointRadius, color);
+			Tooltip.install(circle, new Tooltip(this.x + " | " + this.y));
+			return circle;
+		}
 	}
 
 	protected final class Graph {
@@ -109,21 +179,18 @@ public class LineGraph {
 					Platform.runLater(new Runnable() {
 						@Override
 						public void run() {
+							group.getChildren().clear();
 							if (points.size() != 0) {
-								Circle circle = new Circle(points.get(0).getRelativeX(),
-										points.get(0).getRelativeY(), graphPointRadius, color);
-								Tooltip.install(circle, new Tooltip(points.get(0).getX() + " | " + points.get(0).getY()));
-								group.getChildren().add(circle);
-								for (int i=1;i<points.size();i++) {
-									circle = new Circle(points.get(i).getRelativeX(),
-											points.get(i).getRelativeY(), graphPointRadius, color);
-									Tooltip.install(circle, new Tooltip(points.get(i).getX() + " | " + points.get(i).getY()));
-									group.getChildren().add(circle);
-									Line line = new Line(points.get(i-1).getRelativeX(), points.get(i-1).getRelativeY(),
-													points.get(i).getRelativeX(), points.get(i).getRelativeY());
-									line.setStroke(color);
-									line.setStrokeWidth(graphStrokeWidth);
-									group.getChildren().add(line);
+								for (int i=0;i<points.size();i++) {
+									if (points.get(i).isInGraph()) {
+										group.getChildren().add(points.get(i).getCircle(color));
+									}
+									if (i > 0) {
+										Line line = points.get(i-1).getLineTo(points.get(i), color);
+										if (line != null) {
+											group.getChildren().add(line);
+										}
+									}
 								}
 							}
 						}
@@ -227,7 +294,7 @@ public class LineGraph {
 	}
 
 	/**
-	 * Creates a line graph scale at x, y with the given width and height.
+	 * Creates a line graph scale at x, y with the given width and height.v
 	 * Start and End represent the unitsizes for each axis.
 	 *
 	 * @param x X-Coordinate of the origin
@@ -258,6 +325,20 @@ public class LineGraph {
 		this.updateGroups();
 	}
 
+	/**
+	 * Creates a line graph scale at x, y with the given width and height.<br/>
+	 * Start and End represent the unitsizes for each axis.
+	 *
+	 * @param x X-Coordinate of the origin
+	 * @param y Y-Coordinate of the origin
+	 * @param width Width of the graph
+	 * @param height Height of the graph
+	 * @param xStart Min X-value
+	 * @param xEnd Max X-value
+	 * @param yStart Max Y-value
+	 * @param yEnd Min Y-value
+	 * @param marking a marking object to use
+	 */
 	public LineGraph(double x, double y, double width, double height,
 			double xStart, double xEnd, double yStart, double yEnd, Marking marking) {
 		this(x, y, width, height, xStart, xEnd, yStart, yEnd);
@@ -310,7 +391,7 @@ public class LineGraph {
 	 * @param coordinates the coordinates of the point to add
 	 * @throws Exception
 	 */
-	public void extendGraph(int graph, double[] coordinates) throws Exception {
+	public void extendGraph(int graph, double...coordinates) throws Exception {
 		if (coordinates.length != 2) {
 			throw new IllegalArgumentException("Coordinates have to consist of two values");
 		}
