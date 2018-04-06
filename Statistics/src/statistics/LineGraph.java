@@ -1,6 +1,7 @@
 package statistics;
 
 import java.util.ArrayList;
+import java.awt.geom.Line2D;
 import javafx.scene.Group;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Line;
@@ -75,16 +76,11 @@ public class LineGraph {
 
 		private Point getLineIntersection(double x1, double x2, double x3,
 				double x4, double y1, double y2, double y3, double y4) {
-			double zx = (x1*y2-y1*x2)*(x3-x4)-(x1-x2)*(x3*y4-y3*x4);
-			double zy = (x1*y2-y1*x2)*(y3-y4)-(y1-y2)*(x3*y4-y3*x4);
 			double n = (x1-x2)*(y3-y4)-(y1-y2)*(x3-x4);
-			if (n!=0) {
-				double x = zx/n;
-				double y = zy/n;
-				// Intersection might be outside of the start and end-points
-				if (!((x-x1)/(x2-x1) > 1 || (x-x3)/(x4-x3) > 1 || (y-y1)/(y2-y1) > 1 || (y-y3)/(y4-y3) > 1)) {
-					return new Point(x, y);
-				}
+			// Intersection might be outside of the start and end-points
+			if (n!=0 &&Line2D.Double.linesIntersect(x1, y1, x2, y2, x3, y3, x4, y4)) {
+				return new Point(((x1*y2-y1*x2)*(x3-x4)-(x1-x2)*(x3*y4-y3*x4))/n,
+						((x1*y2-y1*x2)*(y3-y4)-(y1-y2)*(x3*y4-y3*x4))/n);
 			}
 			return null;
 		}
@@ -365,7 +361,7 @@ public class LineGraph {
 			if (coordinates[i].length != 2) {
 				throw new IllegalArgumentException("Coordinates have to consist of two values");
 			}
-			graph.addPoint(new Point(coordinates[0][0], coordinates[0][1]));
+			graph.addPoint(new Point(coordinates[i][0], coordinates[i][1]));
 		}
 		graphs.add(graph);
 		this.updateGroups();
