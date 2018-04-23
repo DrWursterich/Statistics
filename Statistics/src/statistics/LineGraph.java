@@ -3,6 +3,7 @@ package statistics;
 import java.util.ArrayList;
 import java.awt.geom.Line2D;
 import javafx.scene.Group;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Line;
 import javafx.scene.shape.Circle;
@@ -11,6 +12,14 @@ import javafx.scene.text.Font;
 import javafx.scene.control.Tooltip;
 import javafx.concurrent.Task;
 import javafx.application.Platform;
+//import javafx.beans.binding.DoubleBinding;
+//import javafx.beans.binding.NumberBinding;
+//import javafx.beans.binding.BooleanBinding;
+//import javafx.beans.property.IntegerProperty;
+//import javafx.beans.property.SimpleIntegerProperty;
+//import javafx.beans.property.DoubleProperty;
+//import javafx.beans.property.SimpleDoubleProperty;
+
 
 /**
  * This class represents a simple line graph based on
@@ -20,10 +29,9 @@ import javafx.application.Platform;
  * @author Mario Schaeper
  */
 @SuppressWarnings("restriction")
-public class LineGraph {
+public class LineGraph extends VBox {
 	private Group scaleGroup = new Group();
 	private Group markingGroup = new Group();
-	private Group completeGroup = new Group();
 	private ArrayList<Graph> graphs = new ArrayList<Graph>();
 	private Marking marking = null;
 	private int graphCount = 0;
@@ -67,11 +75,11 @@ public class LineGraph {
 		}
 
 		protected boolean isInGraph() {
-			return this.x >= xStart && this.x <= xEnd && this.y >= yStart && this.y <=yEnd;
+			return this.x >= xStart && this.x <= xEnd && this.y >= yStart && this.y <= yEnd;
 		}
 
 		private double getDistance(Point other) {
-			return Math.sqrt(Math.pow(this.x-other.x, 2) + Math.pow(this.y-other.y, 2));
+			return Math.sqrt(Math.pow(this.getX()-other.getX(), 2) + Math.pow(this.getY()-other.getY(), 2));
 		}
 
 		private Point getLineIntersection(double x1, double x2, double x3,
@@ -91,10 +99,14 @@ public class LineGraph {
 			Point[] intersections = new Point[4];
 
 			if (!this.isInGraph() || !other.isInGraph()) {
-				intersections[0] = this.getLineIntersection(this.x, other.x, xStart, xEnd,   this.y, other.y, yEnd,   yEnd);
-				intersections[1] = this.getLineIntersection(this.x, other.x, xStart, xEnd,   this.y, other.y, yStart, yStart);
-				intersections[2] = this.getLineIntersection(this.x, other.x, xStart, xStart, this.y, other.y, yStart, yEnd);
-				intersections[3] = this.getLineIntersection(this.x, other.x, xEnd,   xEnd,   this.y, other.y, yStart, yEnd);
+				intersections[0] = this.getLineIntersection(this.getX(), other.getX(), xStart,
+						xEnd, this.getY(), other.getY(), yEnd,   yEnd);
+				intersections[1] = this.getLineIntersection(this.getX(), other.getX(), xStart,
+						xEnd, this.getY(), other.getY(), yStart, yStart);
+				intersections[2] = this.getLineIntersection(this.getX(), other.getX(), xStart,
+						xStart, this.getY(), other.getY(), yStart, yEnd);
+				intersections[3] = this.getLineIntersection(this.getX(), other.getX(), xEnd,
+						xEnd, this.getY(), other.getY(), yStart, yEnd);
 			}
 
 			for (int i=intersections.length-1;i>=0;i--) {
@@ -315,9 +327,11 @@ public class LineGraph {
 		this.xScaleFactor = this.width/(this.xEnd-this.xStart);
 		this.yScaleFactor = this.height/(this.yEnd-this.yStart);
 
+		this.setManaged(false);
+		this.setWidth((this.xStart-this.xEnd)*this.xScaleFactor);
+		this.setHeight((this.yStart-this.yEnd)*this.yScaleFactor);
 		this.scaleGroup.setManaged(false);
 		this.markingGroup.setManaged(false);
-		this.completeGroup.setManaged(false);
 		this.updateGroups();
 	}
 
@@ -521,7 +535,6 @@ public class LineGraph {
 	 */
 	public void setXStart(double xStart) {
 		this.xStart = xStart;
-		this.xScaleFactor = this.width/(this.xEnd-this.xStart);
 		this.updateGroups();
 	}
 
@@ -531,7 +544,6 @@ public class LineGraph {
 	 */
 	public void setXEnd(double xEnd) {
 		this.xEnd = xEnd;
-		this.xScaleFactor = this.width/(this.xEnd-this.xStart);
 		this.updateGroups();
 	}
 
@@ -634,22 +646,11 @@ public class LineGraph {
 	}
 
 	/**
-	 * Returns all graphs and the scale in a
-	 * <a href="https://docs.oracle.com/javase/8/javafx/api/javafx/scene/Group.html?is-external=true" title="javafx.Group">
-	 * <code>Group</code></a>.
-	 *
-	 * @return the graphs and scale
-	 */
-	public Group getCompleteGroup() {
-		return this.completeGroup;
-	}
-
-	/**
 	 * Returns the distance from the Y-axis to the left side of a marking including the text.
 	 * @return width of markings on the Y-axis
 	 */
 	public double getMarkingSizeX() {
-		return this.marking.getSizeX(this);
+		return this.marking != null ? this.marking.getSizeX(this) : 0;
 	}
 
 	/**
@@ -657,7 +658,7 @@ public class LineGraph {
 	 * @return heigth of markings on the X-axis
 	 */
 	public double getMarkingSizeY() {
-		return this.marking.getSizeY(this);
+		return this.marking != null ? this.marking.getSizeY(this) : 0;
 	}
 
 	/**
@@ -691,8 +692,8 @@ public class LineGraph {
 		Platform.runLater(new Runnable() {
 			@Override
 			public void run() {
+				getChildren().clear();
 				scaleGroup.getChildren().clear();
-				completeGroup.getChildren().clear();
 				markingGroup.getChildren().clear();
 				addLine(xScale, yScale, xScale, yScale-height, scaleStrokeWidth, scaleGroup);
 				addLine(xScale, yScale, xScale+width, yScale, scaleStrokeWidth, scaleGroup);
@@ -721,12 +722,12 @@ public class LineGraph {
 					}
 				}
 				scaleGroup.getChildren().add(markingGroup);
-				completeGroup.getChildren().add(scaleGroup);
+				getChildren().add(scaleGroup);
 				for (Graph g : graphs) {
 					try {
 						g.updateGroup();
 					} catch (Exception e) {}
-					completeGroup.getChildren().add(g.getGroup());
+					getChildren().add(g.getGroup());
 				}
 			}
 		});
